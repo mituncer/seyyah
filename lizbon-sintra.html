@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Lizbon & Sintra — Günlük</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:Georgia,serif;background:#faf7f2;color:#1c1814;min-height:100vh}
+#loading{position:fixed;inset:0;background:#1a3a5c;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
+#loading .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#d4a017;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#app{display:none}
+.hdr{background:#1a3a5c;color:#fff;position:sticky;top:0;z-index:99}
+.hdr-top{padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.htitle{font-size:1.4rem;font-weight:700}
+.htitle em{color:#d4a017;font-style:italic}
+.hsub{font-size:.58rem;letter-spacing:2px;text-transform:uppercase;opacity:.5;margin-top:3px}
+.hbadge{background:rgba(255,255,255,.08);border:1px solid rgba(212,160,23,.35);border-radius:10px;padding:8px 12px;text-align:right;flex-shrink:0}
+.hbadge b{color:#d4a017;font-size:.8rem;display:block}
+.hbadge small{opacity:.5;font-size:.62rem}
+.tabs{display:flex;overflow-x:auto;border-top:1px solid rgba(255,255,255,.1);padding:0 6px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 12px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.4);cursor:pointer;font:500 .75rem Georgia,serif;white-space:nowrap}
+.tab.on{color:#d4a017;border-bottom-color:#d4a017}
+.main{max-width:680px;margin:0 auto;padding:16px 12px 120px}
+.prog{background:#fff;border-radius:14px;border:1.5px solid #e8ddd0;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px}
+.prog-txt{font-size:.9rem;color:#1a3a5c;white-space:nowrap}
+.prog-track{flex:1;height:5px;background:#e8ddd0;border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#1a3a5c,#d4a017);transition:width .4s}
+.prog-pct{font-size:.73rem;color:#aaa;white-space:nowrap}
+.panel{display:none}.panel.on{display:block}
+.day-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e8ddd0}
+.day-hdr-left{display:flex;align-items:baseline;gap:12px}
+.day-n{font-size:1.9rem;font-weight:700;color:#1a3a5c;opacity:.1;line-height:1}
+.day-title{font-size:1.1rem;font-weight:700;color:#1a3a5c}
+.day-date{font-size:.68rem;color:#c1654a;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.edit-btn{padding:7px 13px;border:1.5px solid #e8ddd0;border-radius:10px;background:#fff;font:.75rem Georgia,serif;color:#666;cursor:pointer}
+.edit-btn.on{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.card{background:#fff;border-radius:14px;border:1.5px solid #e8ddd0;overflow:hidden;margin-bottom:10px}
+.card.done{border-color:#6b8f71}
+.card.hasdata{background:linear-gradient(135deg,#fff 0%,#fdf8ed 100%);border-color:#e0c060}
+.card.hasdata.done{background:linear-gradient(135deg,#fff 0%,rgba(107,143,113,0.08) 100%)}
+.cindicators{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.cind{font-size:.58rem;padding:2px 7px;border-radius:99px;background:#fef3c7;color:#92660a;border:1px solid #e0c060}
+.card-head{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:11px;padding:13px;cursor:pointer;user-select:none}
+.cicon{width:40px;height:40px;border-radius:9px;background:#f5efe6;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+.cname{font-size:.92rem;font-weight:700}
+.ctype{font-size:.63rem;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.cactions{display:flex;align-items:center;gap:8px}
+.chk{width:34px;height:34px;border-radius:50%;border:2px solid #ddd;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:transparent;flex-shrink:0;transition:all .2s}
+.chk.on{background:#6b8f71;border-color:#6b8f71;color:#fff}
+.arr{color:#ccc;font-size:1rem;transition:transform .2s;line-height:1}
+.card.open .arr{transform:rotate(180deg)}
+.card-body{display:none;padding:0 13px 15px;border-top:1px solid #f0e8de}
+.card.open .card-body{display:block}
+.edit-controls{display:none;align-items:center;gap:6px}
+.edit-mode .edit-controls{display:flex}
+.edit-mode .chk,.edit-mode .arr{display:none}
+.edit-mode .card-head{cursor:default}
+.ord-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid #e8ddd0;background:#faf7f2;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#666;flex-shrink:0}
+.ord-btn:disabled{opacity:.25;cursor:default}
+.move-sel{border:1.5px solid #e8ddd0;border-radius:8px;padding:5px 6px;font:.72rem Georgia,serif;color:#444;background:#fff;cursor:pointer;max-width:110px}
+.del-card-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid #fcc;background:#fff5f5;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#c1654a;flex-shrink:0}
+.flabel{display:block;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:#bbb;margin:13px 0 7px}
+textarea{width:100%;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 11px;font:1rem/1.6 Georgia,serif;color:#1c1814;background:#faf7f2;resize:vertical;outline:none;min-height:75px}
+textarea:focus{border-color:#2d5a8e}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}
+.upload-lbl{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px 12px;background:#f5efe6;border:1.5px solid #e8ddd0;border-radius:12px;cursor:pointer;font:500 .82rem Georgia,serif;color:#444;text-align:center;line-height:1.3;touch-action:manipulation;user-select:none}
+.upload-lbl.dark{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.upload-lbl .ic{font-size:1.45rem;line-height:1}
+.upload-lbl input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;margin-top:11px}
+.mthumb{position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1;background:#ddd}
+.mthumb img,.mthumb video{width:100%;height:100%;object-fit:cover;display:block}
+.mdel{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center}
+.arow{display:flex;align-items:center;gap:9px;background:#f5efe6;border-radius:9px;padding:9px 11px;margin-top:8px}
+.arow audio{flex:1;height:28px;min-width:0}
+.adel{background:none;border:none;cursor:pointer;color:#bbb;font-size:.9rem;flex-shrink:0}
+.add-stop-box{margin-top:4px;margin-bottom:6px}
+.add-stop-btn{width:100%;padding:12px;border:2px dashed #d4a017;border-radius:14px;background:rgba(212,160,23,.04);color:#b8860b;font:.85rem Georgia,serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.add-form{background:#fff;border-radius:14px;border:1.5px solid #e8ddd0;padding:16px;margin-top:8px;display:none}
+.add-form.on{display:block}
+.add-row{display:flex;gap:8px;margin-bottom:10px}
+.emoji-input{width:54px;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 8px;font-size:1.2rem;text-align:center;outline:none;background:#faf7f2}
+.name-input{flex:1;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 12px;font:1rem Georgia,serif;outline:none;background:#faf7f2}
+.type-input{width:100%;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 12px;font:.9rem Georgia,serif;outline:none;background:#faf7f2;margin-bottom:10px}
+.add-form-btns{display:flex;gap:8px}
+.abtn{flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font:.85rem Georgia,serif}
+.abtn.ok{background:#1a3a5c;color:#fff}
+.abtn.cancel{background:#f0e8de;color:#666}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:#fff;border-top:1px solid #e8ddd0;padding:10px 14px;display:flex;gap:10px}
+.bot-btn{flex:1;padding:13px 8px;border:none;border-radius:12px;font:.85rem Georgia,serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;touch-action:manipulation}
+.bot-btn.save{background:#1a3a5c;color:#fff}
+.bot-btn.save.ok{background:#6b8f71}
+.bot-btn.zip{background:#f5efe6;color:#1a3a5c;border:1.5px solid #e8ddd0}
+.bot-btn.zip.busy{opacity:.6;pointer-events:none}
+.lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:300;align-items:center;justify-content:center}
+.lb.on{display:flex}
+.lb img{max-width:95vw;max-height:88vh;border-radius:8px;object-fit:contain}
+.lb-close{position:absolute;top:14px;right:18px;color:#fff;font-size:2rem;background:none;border:none;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:.9rem;opacity:.7">Yükleniyor…</div>
+</div>
+
+<div id="app">
+<div class="hdr">
+  <div class="hdr-top">
+    <div>
+      <div class="htitle">Lizbon &amp; <em>Sintra</em></div>
+      <div class="hsub">Seyahat Günlüğü</div>
+    </div>
+    <div class="hbadge">
+      <b>🏛 Hotel Sete Colinas</b>
+      <small>✈️ Booking.com Transfer</small>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</div>
+<div class="main">
+  <div class="prog">
+    <div class="prog-txt" id="ptext">0 / 0</div>
+    <div class="prog-track"><div class="prog-fill" id="pfill" style="width:0%"></div></div>
+    <div class="prog-pct" id="ppct">0%</div>
+  </div>
+  <div id="panels"></div>
+</div>
+<div class="bottom-bar">
+  <button class="bot-btn zip" id="zipBtn" onclick="exportZip()">📦 Tümünü İndir</button>
+  <button class="bot-btn save" id="saveBtn" onclick="saveAll()">💾 Kaydet</button>
+</div>
+<div class="lb" id="lb" onclick="closeLb()">
+  <button class="lb-close">✕</button>
+  <img id="lbimg" src="" alt="">
+</div>
+</div><!-- /app -->
+
+<script>
+// ── Default itinerary ─────────────────────────
+const DEFAULT_DAYS = [
+  { title:"Seyahatten Önce", date:"Hazırlık & Kontrol Listesi", stops:[
+    {id:"pre0",ic:"📋",name:"Pasaport & Vize Kontrol",type:"Belge"},
+    {id:"pre1",ic:"🧳",name:"Bavul Hazırlama",type:"Hazırlık"},
+    {id:"pre2",ic:"💶",name:"Euro Bozdurma",type:"Finans"},
+    {id:"pre3",ic:"📱",name:"Otel & Transfer Konfirmasyonu",type:"Rezervasyon"},
+  ]},
+  { title:"Alfama & Castelo", date:"Perşembe · Varış 13:15", stops:[
+    {id:"d0s0",ic:"✈️",name:"Havalimanı Transferi",type:"Transfer · Booking.com"},
+    {id:"d0s1",ic:"🏛",name:"Hotel Sete Colinas",type:"Check-in"},
+    {id:"d0s2",ic:"🏰",name:"Castelo de São Jorge",type:"Kale"},
+    {id:"d0s3",ic:"🌆",name:"Alfama Mahallesi",type:"Tarihi Semt"},
+    {id:"d0s4",ic:"🎵",name:"Fado Dinletisi",type:"Müzik · Akşam"},
+  ]},
+  { title:"MAAT & LX Factory", date:"Cuma · Sanat & Sokak", stops:[
+    {id:"d1s0",ic:"🎨",name:"MAAT Müzesi",type:"Çağdaş Sanat"},
+    {id:"d1s1",ic:"🌉",name:"25 de Abril Köprüsü",type:"Fotoğraf Durağı"},
+    {id:"d1s2",ic:"🏭",name:"LX Factory",type:"Yaratıcı Pazar"},
+    {id:"d1s3",ic:"🍷",name:"Akşam Yemeği",type:"Gastronomi"},
+  ]},
+  { title:"Belém", date:"Cumartesi · Deniz & Mimari", stops:[
+    {id:"d2s0",ic:"⛪",name:"Mosteiro dos Jerónimos",type:"Manueline Mimari"},
+    {id:"d2s1",ic:"🥐",name:"Pastéis de Belém",type:"Pastel de Nata"},
+    {id:"d2s2",ic:"🗼",name:"Torre de Belém",type:"UNESCO Mirası"},
+    {id:"d2s3",ic:"⛵",name:"Tejo Nehri Yürüyüşü",type:"Rıhtım"},
+  ]},
+  { title:"Sintra", date:"Pazar · Masal Şatoları", stops:[
+    {id:"d3s0",ic:"🚂",name:"Rossio → Sintra Treni",type:"Ulaşım"},
+    {id:"d3s1",ic:"🏯",name:"Palácio Nacional da Pena",type:"Şato"},
+    {id:"d3s2",ic:"🏔",name:"Castelo dos Mouros",type:"Mağribi Kalesi"},
+    {id:"d3s3",ic:"🌳",name:"Quinta da Regaleira",type:"Gizemli Bahçe"},
+    {id:"d3s4",ic:"🍽",name:"Sintra Merkez Yemeği",type:"Gastronomi"},
+  ]},
+  { title:"Graça & Dönüş", date:"Pazartesi · Kalkış 15:15", stops:[
+    {id:"d4s0",ic:"⛪",name:"Igreja da Graça",type:"Kilise"},
+    {id:"d4s1",ic:"🌅",name:"Miradouro da Graça",type:"Seyir Terası"},
+    {id:"d4s2",ic:"🛍",name:"Praça do Comércio",type:"Meydan & Hediyelik"},
+    {id:"d4s3",ic:"✈️",name:"Havalimanı · Kalkış 15:15",type:"Dönüş"},
+  ]},
+  { title:"Seyahatten Sonra", date:"Anılar & Notlar", stops:[
+    {id:"post0",ic:"⭐",name:"En Güzel An",type:"Anı"},
+    {id:"post1",ic:"🍽",name:"En İyi Yemek",type:"Gastronomi Notu"},
+    {id:"post2",ic:"📸",name:"Favori Fotoğraf Noktası",type:"Fotoğraf Notu"},
+    {id:"post3",ic:"💡",name:"Bir Dahaki Sefere",type:"İpuçları"},
+  ]},
+];
+
+// ── IndexedDB ─────────────────────────────────
+const DB_NAME = 'lizbon_sintra';
+const DB_VER  = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('meta'))  d.createObjectStore('meta');
+      if (!d.objectStoreNames.contains('media')) d.createObjectStore('media');
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbPut(store, key, value) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbDel(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbGetAllKeys(store) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAllKeys();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+// ── App state ─────────────────────────────────
+let days = [], stopMeta = {}, activeDay = 0, editMode = [], addFormOpen = [];
+// stopMeta[id] = { checked, note, mediaKeys: [idb key, ...] }
+
+// ── Persist helpers ───────────────────────────
+async function persistMeta() {
+  await dbPut('meta', 'days', days);
+  await dbPut('meta', 'stopMeta', stopMeta);
+}
+
+// Media key format: "media__{stopId}__{index}__{filename}"
+function mediaKey(stopId, idx, name) {
+  return `media__${stopId}__${idx}__${name}`;
+}
+
+// ── Load ──────────────────────────────────────
+async function loadState() {
+  const savedDays = await dbGet('meta', 'days');
+  const savedMeta = await dbGet('meta', 'stopMeta');
+
+  if (savedDays && savedMeta) {
+    days     = savedDays;
+    stopMeta = savedMeta;
+  } else {
+    days = JSON.parse(JSON.stringify(DEFAULT_DAYS));
+    stopMeta = {};
+    days.forEach(d => d.stops.forEach(s => {
+      stopMeta[s.id] = { checked: false, note: '', mediaKeys: [] };
+    }));
+    await persistMeta();
+  }
+}
+
+// ── Render ────────────────────────────────────
+function render() {
+  mediaLoaded.clear();
+  editMode   = days.map((_,i) => editMode[i]   || false);
+  addFormOpen= days.map((_,i) => addFormOpen[i] || false);
+
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  days.forEach((d,i) => {
+    const b = document.createElement('button');
+    b.className = 'tab' + (i===activeDay?' on':'');
+    b.textContent = i===0 ? '⬆ Önce' : i===days.length-1 ? '⬇ Sonra' : 'Gün '+i;
+    b.onclick = () => { activeDay=i; render(); };
+    tabsEl.appendChild(b);
+  });
+
+  const panelsEl = document.getElementById('panels');
+  panelsEl.innerHTML = '';
+  days.forEach((d,di) => {
+    const panel = document.createElement('div');
+    panel.className = 'panel' + (di===activeDay?' on':'');
+
+    const dhdr = document.createElement('div');
+    dhdr.className = 'day-hdr';
+    dhdr.innerHTML = `
+      <div class="day-hdr-left">
+        <div class="day-n">${di===0?'↑':di===days.length-1?'↓':'0'+di}</div>
+        <div><div class="day-title">${d.title}</div><div class="day-date">${d.date}</div></div>
+      </div>
+      <button class="edit-btn${editMode[di]?' on':''}" onclick="toggleEdit(${di})">${editMode[di]?'✓ Bitti':'✏ Düzenle'}</button>`;
+    panel.appendChild(dhdr);
+
+    const stopsEl = document.createElement('div');
+    stopsEl.id = 'stops'+di;
+    if (editMode[di]) stopsEl.classList.add('edit-mode');
+    d.stops.forEach((s,si) => stopsEl.appendChild(makeCard(s,di,si)));
+    panel.appendChild(stopsEl);
+
+    const addBox = document.createElement('div');
+    addBox.className = 'add-stop-box';
+    addBox.innerHTML = `
+      <button class="add-stop-btn" onclick="toggleAddForm(${di})">＋ Yeni Durak Ekle</button>
+      <div class="add-form${addFormOpen[di]?' on':''}" id="addform${di}">
+        <div class="add-row">
+          <input class="emoji-input" id="emoji${di}" type="text" placeholder="🗺" maxlength="2">
+          <input class="name-input" id="aname${di}" type="text" placeholder="Durak adı">
+        </div>
+        <input class="type-input" id="atype${di}" type="text" placeholder="Tür (ör: Müze, Kafe…)">
+        <div class="add-form-btns">
+          <button class="abtn cancel" onclick="toggleAddForm(${di})">İptal</button>
+          <button class="abtn ok" onclick="addStop(${di})">Ekle</button>
+        </div>
+      </div>`;
+    panel.appendChild(addBox);
+    panelsEl.appendChild(panel);
+  });
+
+  updateProgress();
+
+  // Refresh appearance for all stops in active day
+  days[activeDay].stops.forEach(s => {
+    refreshCardAppearance(s.id);
+    const card = document.getElementById('card'+s.id);
+    if (card && card.classList.contains('open')) loadMediaForStop(s.id);
+  });
+}
+
+function makeCard(s, di, si) {
+  const sm = stopMeta[s.id] || { checked:false, note:'', mediaKeys:[] };
+  const card = document.createElement('div');
+  card.className = 'card' + (sm.checked?' done':'');
+  card.id = 'card'+s.id;
+
+  const dayOpts = days.map((d,i) =>
+    `<option value="${i}"${i===di?' selected':''}>${i===0?'Önce':i===days.length-1?'Sonra':'Gün '+i} — ${d.title}</option>`
+  ).join('');
+
+  card.innerHTML = `
+    <div class="card-head" onclick="handleHeadClick('${s.id}',${di})">
+      <div class="cicon">${s.ic}</div>
+      <div><div class="cname">${s.name}</div><div class="ctype">${s.type}</div></div>
+      <div class="cactions">
+        <button class="chk${sm.checked?' on':''}" id="chk${s.id}" onclick="event.stopPropagation();toggleCheck('${s.id}')">✓</button>
+        <span class="arr">▾</span>
+        <div class="edit-controls">
+          <button class="ord-btn" ${si===0?'disabled':''} onclick="moveStop(${di},${si},-1)">↑</button>
+          <button class="ord-btn" ${si===days[di].stops.length-1?'disabled':''} onclick="moveStop(${di},${si},1)">↓</button>
+          <select class="move-sel" onchange="moveToDay(${di},${si},this.value)">${dayOpts}</select>
+          <button class="del-card-btn" onclick="deleteStop(${di},${si})">🗑</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <label class="flabel">Notlar</label>
+      <textarea id="note${s.id}" placeholder="İzlenimlerinizi yazın…" oninput="saveNote('${s.id}')">${sm.note||''}</textarea>
+      <label class="flabel">Fotoğraf / Video / Ses</label>
+      <div class="upload-grid">
+        <label class="upload-lbl dark"><span class="ic">📷</span><span>Fotoğraf Çek</span><input type="file" accept="image/*" capture="environment" onchange="handleFiles('${s.id}',this)"></label>
+        <label class="upload-lbl"><span class="ic">🖼</span><span>Galeriden Seç</span><input type="file" accept="image/*,video/*" multiple onchange="handleFiles('${s.id}',this)"></label>
+        <label class="upload-lbl dark"><span class="ic">🎬</span><span>Video Çek</span><input type="file" accept="video/*" capture="environment" onchange="handleFiles('${s.id}',this)"></label>
+        <label class="upload-lbl"><span class="ic">🎙</span><span>Ses Kaydet</span><input type="file" accept="audio/*" capture="microphone" onchange="handleFiles('${s.id}',this)"></label>
+      </div>
+      <div class="mgrid" id="media${s.id}"></div>
+      <div id="audio${s.id}"></div>
+    </div>`;
+  return card;
+}
+
+// Track which stops have already had media loaded into DOM
+const mediaLoaded = new Set();
+
+// Load and render media blobs from IDB for a stop — runs only once per stop per session
+async function loadMediaForStop(stopId) {
+  if (mediaLoaded.has(stopId)) return;
+  mediaLoaded.add(stopId);
+
+  const sm = stopMeta[stopId];
+  if (!sm || !sm.mediaKeys || !sm.mediaKeys.length) return;
+  const card = document.getElementById('card'+stopId);
+  if (!card) return;
+
+  for (let i = 0; i < sm.mediaKeys.length; i++) {
+    const key = sm.mediaKeys[i];
+    const blob = await dbGet('media', key);
+    if (!blob) continue;
+    const url = URL.createObjectURL(blob);
+    renderMediaURL(stopId, blob.type, url, key, card);
+  }
+  refreshCardAppearance(stopId);
+}
+
+function renderMediaURL(stopId, mimeType, url, key, card) {
+  if (!card) card = document.getElementById('card'+stopId);
+  if (!card) return;
+  const safeKey = key.replace(/[^a-zA-Z0-9_]/g,'_');
+
+  if (mimeType.startsWith('audio/')) {
+    const el = card.querySelector('#audio'+stopId); if (!el) return;
+    const row = document.createElement('div');
+    row.className = 'arow';
+    row.id = 'arow_'+safeKey;
+    row.innerHTML = `🎙 <audio src="${url}" controls></audio>
+      <button class="adel" onclick="delMedia('${stopId}','${key}')">✕</button>`;
+    el.appendChild(row);
+  } else {
+    const grid = card.querySelector('#media'+stopId); if (!grid) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'mthumb';
+    wrap.id = 'mthumb_'+safeKey;
+    if (mimeType.startsWith('image/')) {
+      wrap.innerHTML = `<img src="${url}" onclick="openLb('${url}')">
+        <button class="mdel" onclick="delMedia('${stopId}','${key}')">✕</button>`;
+    } else {
+      wrap.innerHTML = `<video src="${url}" controls playsinline></video>
+        <button class="mdel" onclick="delMedia('${stopId}','${key}')">✕</button>`;
+    }
+    grid.appendChild(wrap);
+  }
+}
+
+// ── File handling ─────────────────────────────
+async function handleFiles(stopId, input) {
+  if (!stopMeta[stopId]) stopMeta[stopId] = { checked:false, note:'', mediaKeys:[] };
+  const files = Array.from(input.files);
+  input.value = '';
+
+  for (const file of files) {
+    const idx = stopMeta[stopId].mediaKeys.length;
+    const key = mediaKey(stopId, idx, file.name);
+    await dbPut('media', key, file); // store raw Blob — no size limit!
+    stopMeta[stopId].mediaKeys.push(key);
+    await persistMeta();
+
+    // Render immediately
+    const url = URL.createObjectURL(file);
+    const card = document.getElementById('card'+stopId);
+    renderMediaURL(stopId, file.type, url, key, card);
+  }
+  refreshCardAppearance(stopId);
+}
+
+async function delMedia(stopId, key) {
+  await dbDel('media', key);
+  if (stopMeta[stopId]) {
+    stopMeta[stopId].mediaKeys = stopMeta[stopId].mediaKeys.filter(k => k !== key);
+    await persistMeta();
+  }
+  // Remove from DOM
+  const safeKey = key.replace(/[^a-zA-Z0-9_]/g,'_');
+  const el = document.getElementById('mthumb_'+safeKey) || document.getElementById('arow_'+safeKey);
+  if (el) el.remove();
+  refreshCardAppearance(stopId);
+}
+
+// ── Interactions ──────────────────────────────
+function handleHeadClick(id, di) {
+  if (editMode[di]) return;
+  const card = document.getElementById('card'+id);
+  const wasOpen = card.classList.contains('open');
+  card.classList.toggle('open');
+  if (!wasOpen) loadMediaForStop(id);
+}
+
+async function toggleCheck(id) {
+  if (!stopMeta[id]) stopMeta[id] = { checked:false, note:'', mediaKeys:[] };
+  stopMeta[id].checked = !stopMeta[id].checked;
+  const card = document.getElementById('card'+id);
+  const chk  = document.getElementById('chk'+id);
+  card.classList.toggle('done', stopMeta[id].checked);
+  chk.classList.toggle('on', stopMeta[id].checked);
+  chk.style.color = stopMeta[id].checked ? '#fff' : 'transparent';
+  updateProgress();
+  await persistMeta();
+}
+
+async function saveNote(id) {
+  if (!stopMeta[id]) stopMeta[id] = { checked:false, note:'', mediaKeys:[] };
+  stopMeta[id].note = document.getElementById('note'+id).value;
+  await persistMeta();
+  refreshCardAppearance(id);
+}
+
+function toggleEdit(di)      { editMode[di]=!editMode[di]; render(); }
+function toggleAddForm(di)   { addFormOpen[di]=!addFormOpen[di]; render(); if(addFormOpen[di]) setTimeout(()=>{ const el=document.getElementById('aname'+di); if(el)el.focus(); },100); }
+
+async function addStop(di) {
+  const ic   = document.getElementById('emoji'+di).value.trim() || '📍';
+  const name = document.getElementById('aname'+di).value.trim();
+  const type = document.getElementById('atype'+di).value.trim() || 'Durak';
+  if (!name) { alert('Lütfen bir durak adı girin.'); return; }
+  const id = 'c'+Date.now();
+  days[di].stops.push({id,ic,name,type});
+  stopMeta[id] = { checked:false, note:'', mediaKeys:[] };
+  addFormOpen[di] = false;
+  await persistMeta();
+  render();
+}
+
+async function moveStop(di, si, dir) {
+  const stops = days[di].stops, nsi = si+dir;
+  if (nsi<0||nsi>=stops.length) return;
+  [stops[si],stops[nsi]] = [stops[nsi],stops[si]];
+  await persistMeta(); render();
+}
+
+async function moveToDay(fromDi, si, toDiStr) {
+  const toDi = parseInt(toDiStr);
+  if (toDi===fromDi) return;
+  const stop = days[fromDi].stops.splice(si,1)[0];
+  days[toDi].stops.push(stop);
+  await persistMeta(); render();
+}
+
+async function deleteStop(di, si) {
+  const stop = days[di].stops[si];
+  if (!confirm('"'+stop.name+'" durağını silmek istediğinize emin misiniz?')) return;
+  // Delete all media for this stop
+  const sm = stopMeta[stop.id];
+  if (sm && sm.mediaKeys) {
+    for (const k of sm.mediaKeys) await dbDel('media', k);
+  }
+  days[di].stops.splice(si,1);
+  delete stopMeta[stop.id];
+  await persistMeta(); render();
+}
+
+// ── Progress ──────────────────────────────────
+function updateProgress() {
+  const ids  = Object.keys(stopMeta);
+  const done = ids.filter(id => stopMeta[id]?.checked).length;
+  const pct  = ids.length ? Math.round(done/ids.length*100) : 0;
+  document.getElementById('ptext').textContent = done+' / '+ids.length;
+  document.getElementById('pfill').style.width = pct+'%';
+  document.getElementById('ppct').textContent  = pct+'%';
+}
+
+// ── Refresh card appearance ───────────────────
+function refreshCardAppearance(stopId) {
+  const card = document.getElementById('card'+stopId);
+  if (!card) return;
+  const sm = stopMeta[stopId] || {};
+  const hasNote  = !!(sm.note && sm.note.trim());
+  const hasMedia = !!(sm.mediaKeys && sm.mediaKeys.length);
+  const hasData  = hasNote || hasMedia;
+  card.classList.toggle('hasdata', hasData);
+  let indEl = card.querySelector('.cindicators');
+  if (hasData) {
+    if (!indEl) {
+      indEl = document.createElement('div');
+      indEl.className = 'cindicators';
+      const ctypeEl = card.querySelector('.ctype');
+      if (ctypeEl) ctypeEl.after(indEl);
+    }
+    indEl.innerHTML =
+      (hasNote  ? '<span class="cind">✏ not</span>' : '') +
+      (hasMedia ? '<span class="cind">📎 '+sm.mediaKeys.length+' dosya</span>' : '');
+  } else if (indEl) {
+    indEl.remove();
+  }
+}
+
+// ── Save (auto, explicit button) ──────────────
+async function saveAll() {
+  await persistMeta();
+  const btn = document.getElementById('saveBtn');
+  btn.textContent='✓ Kaydedildi'; btn.classList.add('ok');
+  setTimeout(()=>{ btn.textContent='💾 Kaydet'; btn.classList.remove('ok'); },2000);
+}
+
+// ── ZIP export ────────────────────────────────
+async function exportZip() {
+  const btn = document.getElementById('zipBtn');
+  btn.textContent='⏳ Hazırlanıyor…'; btn.classList.add('busy');
+  try {
+    const zip = new JSZip();
+    let master = '# Lizbon & Sintra — Seyahat Günlüğü\nHotel Sete Colinas | Booking.com Transfer\n'+'='.repeat(50)+'\n\n';
+
+    for (let di=0; di<days.length; di++) {
+      const d = days[di];
+      const dayLabel = di===0?'Seyahatten_Once':di===days.length-1?'Seyahatten_Sonra':'Gun_'+di;
+      const folder   = zip.folder(dayLabel+'_'+d.title.replace(/[^\w\s]/gi,'').replace(/\s+/g,'_'));
+      master += `\n## ${di===0?'Seyahatten Önce':di===days.length-1?'Seyahatten Sonra':'Gün '+di} — ${d.title}\n`;
+
+      for (let si=0; si<d.stops.length; si++) {
+        const s  = d.stops[si];
+        const sm = stopMeta[s.id]||{};
+        const note = sm.note||'';
+        const keys = sm.mediaKeys||[];
+
+        master += `\n### ${sm.checked?'✓':'○'} ${s.ic} ${s.name} [${s.type}]\n`;
+        if (note) master += note+'\n';
+        if (keys.length) master += `(${keys.length} medya dosyası)\n`;
+
+        const safeName = `${(si+1).toString().padStart(2,'0')}_${s.name.replace(/[^\w\s]/gi,'').replace(/\s+/g,'_')}`;
+        if (note||keys.length) {
+          let txt = `${s.ic} ${s.name}\n${s.type}\n${'—'.repeat(30)}\n\n`;
+          if (note) txt += note+'\n\n';
+          folder.file(safeName+'.txt', txt);
+        }
+
+        for (let mi=0; mi<keys.length; mi++) {
+          const blob = await dbGet('media', keys[mi]);
+          if (!blob) continue;
+          const parts = keys[mi].split('__');
+          const origName = parts[parts.length-1] || ('dosya_'+mi);
+          const ab = await blob.arrayBuffer();
+          folder.file(`${safeName}_${(mi+1).toString().padStart(2,'0')}_${origName}`, ab);
+        }
+      }
+    }
+
+    zip.file('00_Tum_Notlar.txt', master);
+    const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href=url; a.download='Lizbon_Sintra_Gunlugu.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    btn.textContent='✓ İndirildi';
+    setTimeout(()=>{ btn.textContent='📦 Tümünü İndir'; btn.classList.remove('busy'); },2500);
+  } catch(e) {
+    alert('Hata: '+e.message);
+    btn.textContent='📦 Tümünü İndir'; btn.classList.remove('busy');
+  }
+}
+
+// ── Lightbox ──────────────────────────────────
+function openLb(src){ document.getElementById('lbimg').src=src; document.getElementById('lb').classList.add('on'); }
+function closeLb(){ document.getElementById('lb').classList.remove('on'); document.getElementById('lbimg').src=''; }
+
+// ── Init ──────────────────────────────────────
+(async () => {
+  await openDB();
+  await loadState();
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  render();
+})();
+</script>
+</body>
+</html>

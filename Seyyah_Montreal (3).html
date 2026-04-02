@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Seyyah — Montréal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:Georgia,serif;background:#faf7f2;color:#1c1814;min-height:100vh}
+#loading{position:fixed;inset:0;background:#1a3a5c;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:12px}
+#loading .spinner{width:36px;height:36px;border:3px solid rgba(255,255,255,.2);border-top-color:#d4a017;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#app{display:none}
+.hdr{background:#1a3a5c;color:#fff;position:sticky;top:0;z-index:99}
+.hdr-top{padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.htitle{font-size:1.4rem;font-weight:700}
+.htitle em{color:#d4a017;font-style:italic}
+.hsub{font-size:.58rem;letter-spacing:2px;text-transform:uppercase;opacity:.5;margin-top:3px}
+.hbadge{background:rgba(255,255,255,.08);border:1px solid rgba(212,160,23,.35);border-radius:10px;padding:8px 12px;text-align:right;flex-shrink:0}
+.hbadge b{color:#d4a017;font-size:.8rem;display:block}
+.hbadge small{opacity:.5;font-size:.62rem}
+.tabs{display:flex;overflow-x:auto;border-top:1px solid rgba(255,255,255,.1);padding:0 6px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 12px;background:none;border:none;border-bottom:2px solid transparent;color:rgba(255,255,255,.4);cursor:pointer;font:500 .75rem Georgia,serif;white-space:nowrap}
+.tab.on{color:#d4a017;border-bottom-color:#d4a017}
+.main{max-width:680px;margin:0 auto;padding:16px 12px 120px}
+.prog{background:#fff;border-radius:14px;border:1.5px solid #e8ddd0;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:14px}
+.prog-txt{font-size:.9rem;color:#1a3a5c;white-space:nowrap}
+.prog-track{flex:1;height:5px;background:#e8ddd0;border-radius:99px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,#1a3a5c,#d4a017);transition:width .4s}
+.prog-pct{font-size:.73rem;color:#aaa;white-space:nowrap}
+.panel{display:none}.panel.on{display:block}
+.day-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e8ddd0}
+.day-hdr-left{display:flex;align-items:baseline;gap:12px}
+.day-n{font-size:1.9rem;font-weight:700;color:#1a3a5c;opacity:.1;line-height:1}
+.day-title{font-size:1.1rem;font-weight:700;color:#1a3a5c}
+.day-date{font-size:.68rem;color:#c1654a;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.edit-btn{padding:7px 13px;border:1.5px solid #e8ddd0;border-radius:10px;background:#fff;font:.75rem Georgia,serif;color:#666;cursor:pointer}
+.edit-btn.on{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.card{background:#fff;border-radius:14px;border:1.5px solid #e8ddd0;overflow:hidden;margin-bottom:10px}
+.card.done{border-color:#6b8f71}
+.card.hasdata{background:linear-gradient(135deg,#fff 0%,#fdf8ed 100%);border-color:#e0c060}
+.card.hasdata.done{background:linear-gradient(135deg,#fff 0%,rgba(107,143,113,0.08) 100%)}
+.cindicators{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.cind{font-size:.58rem;padding:2px 7px;border-radius:99px;background:#fef3c7;color:#92660a;border:1px solid #e0c060}
+.card-head{display:grid;grid-template-columns:40px 1fr auto;align-items:center;gap:11px;padding:13px;cursor:pointer;user-select:none}
+.cicon{width:40px;height:40px;border-radius:9px;background:#f5efe6;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+
+.ctype{font-size:.63rem;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.cactions{display:flex;align-items:center;gap:8px}
+.chk{width:34px;height:34px;border-radius:50%;border:2px solid #ddd;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:transparent;flex-shrink:0;transition:all .2s}
+.chk.on{background:#6b8f71;border-color:#6b8f71;color:#fff}
+.arr{color:#ccc;font-size:1rem;transition:transform .2s;line-height:1}
+.card.open .arr{transform:rotate(180deg)}
+.card-body{display:none;padding:0 13px 15px;border-top:1px solid #f0e8de}
+.card.open .card-body{display:block}
+.edit-controls{display:none;align-items:center;gap:6px}
+.edit-mode .edit-controls{display:flex}
+.edit-mode .chk,.edit-mode .arr{display:none}
+.edit-mode .card-head{cursor:default}
+.ord-btn{width:30px;height:30px;border-radius:8px;border:1.5px solid #e8ddd0;background:#faf7f2;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;color:#666;flex-shrink:0}
+.ord-btn:disabled{opacity:.25;cursor:default}
+.move-sel{border:1.5px solid #e8ddd0;border-radius:8px;padding:5px 6px;font:.72rem Georgia,serif;color:#444;background:#fff;cursor:pointer;max-width:110px}
+.del-card-btn{width:28px;height:28px;border-radius:8px;border:1.5px solid #fcc;background:#fff5f5;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#c1654a;flex-shrink:0}
+.flabel{display:block;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;color:#bbb;margin:13px 0 7px}
+textarea{width:100%;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 11px;font:1rem/1.6 Georgia,serif;color:#1c1814;background:#faf7f2;resize:vertical;outline:none;min-height:75px}
+textarea:focus{border-color:#2d5a8e}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:8px}
+.upload-lbl{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 6px 12px;background:#f5efe6;border:1.5px solid #e8ddd0;border-radius:12px;cursor:pointer;font:500 .82rem Georgia,serif;color:#444;text-align:center;line-height:1.3;touch-action:manipulation;user-select:none}
+.upload-lbl.dark{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.upload-lbl .ic{font-size:1.45rem;line-height:1}
+.upload-lbl input{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px;margin-top:11px}
+.mthumb{position:relative;border-radius:9px;overflow:hidden;aspect-ratio:1;background:#ddd}
+.mthumb img,.mthumb video{width:100%;height:100%;object-fit:cover;display:block}
+.mdel{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;border:none;cursor:pointer;font-size:.7rem;display:flex;align-items:center;justify-content:center}
+.arow{display:flex;align-items:center;gap:9px;background:#f5efe6;border-radius:9px;padding:9px 11px;margin-top:8px}
+.arow audio{flex:1;height:28px;min-width:0}
+.adel{background:none;border:none;cursor:pointer;color:#bbb;font-size:.9rem;flex-shrink:0}
+.add-stop-box{margin-top:4px;margin-bottom:6px}
+.add-stop-btn{width:100%;padding:12px;border:2px dashed #d4a017;border-radius:14px;background:rgba(212,160,23,.04);color:#b8860b;font:.85rem Georgia,serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.add-form{background:#fff;border-radius:14px;border:1.5px solid #e8ddd0;padding:16px;margin-top:8px;display:none}
+.add-form.on{display:block}
+.add-row{display:flex;gap:8px;margin-bottom:10px}
+.emoji-input{width:54px;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 8px;font-size:1.2rem;text-align:center;outline:none;background:#faf7f2}
+.name-input{flex:1;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 12px;font:1rem Georgia,serif;outline:none;background:#faf7f2}
+.type-input{width:100%;border:1.5px solid #e8ddd0;border-radius:10px;padding:9px 12px;font:.9rem Georgia,serif;outline:none;background:#faf7f2;margin-bottom:10px}
+.add-form-btns{display:flex;gap:8px}
+.abtn{flex:1;padding:10px;border-radius:10px;border:none;cursor:pointer;font:.85rem Georgia,serif}
+.abtn.ok{background:#1a3a5c;color:#fff}
+.abtn.cancel{background:#f0e8de;color:#666}
+.bottom-bar{position:fixed;bottom:0;left:0;right:0;z-index:200;background:#fff;border-top:1px solid #e8ddd0;padding:10px 14px;display:flex;gap:10px}
+.bot-btn{flex:1;padding:13px 8px;border:none;border-radius:12px;font:.85rem Georgia,serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;touch-action:manipulation}
+.bot-btn.zip{background:#f5efe6;color:#1a3a5c;border:1.5px solid #e8ddd0}
+.bot-btn.zip.busy{opacity:.6;pointer-events:none}
+.lb{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:300;align-items:center;justify-content:center}
+.lb.on{display:flex}
+.lb img{max-width:95vw;max-height:88vh;border-radius:8px;object-fit:contain}
+.lb-close{position:absolute;top:14px;right:18px;color:#fff;font-size:2rem;background:none;border:none;cursor:pointer}
+
+.cname{font-size:.92rem;font-weight:700;cursor:pointer;user-select:text;-webkit-user-select:text}
+.map-btn{display:inline-flex;align-items:center;gap:3px;margin-top:4px;padding:2px 8px;border-radius:99px;background:#e8f0fe;color:#1a56c4;font-size:.6rem;border:1px solid #c0d4fa;cursor:pointer;text-decoration:none;white-space:nowrap}
+.copy-toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1a3a5c;color:#fff;padding:8px 18px;border-radius:99px;font-size:.8rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.copy-toast.on{opacity:1}
+
+.day-edit-form{background:#f5efe6;border-radius:12px;padding:12px;margin-bottom:14px;display:flex;flex-direction:column;gap:8px}
+.day-edit-input{border:1.5px solid #e8ddd0;border-radius:9px;padding:8px 11px;font:1rem Georgia,serif;outline:none;background:#fff;width:100%}
+.day-edit-input:focus{border-color:#2d5a8e}
+.day-edit-btns{display:flex;gap:8px}
+.day-edit-btn{flex:1;padding:9px;border-radius:9px;border:none;cursor:pointer;font:.82rem Georgia,serif}
+.day-edit-btn.ok{background:#1a3a5c;color:#fff}
+.day-edit-btn.cancel{background:#e8ddd0;color:#666}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.on{display:flex}
+.modal-box{background:#fff;border-radius:18px;padding:24px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-title{font-family:Georgia,serif;font-size:1.1rem;font-weight:700;color:#1a3a5c;margin-bottom:4px}
+.modal-sub{font-size:.7rem;color:#aaa;letter-spacing:1px;text-transform:uppercase;margin-bottom:18px}
+.modal-input{width:100%;border:1.5px solid #e8ddd0;border-radius:10px;padding:11px 13px;font:1rem Georgia,serif;outline:none;background:#faf7f2;margin-bottom:10px}
+.modal-input:focus{border-color:#2d5a8e}
+.modal-btns{display:flex;gap:10px;margin-top:6px}
+.modal-btn{flex:1;padding:12px;border-radius:11px;border:none;cursor:pointer;font:.88rem Georgia,serif;font-weight:500}
+.modal-btn.ok{background:#1a3a5c;color:#fff}
+.modal-btn.skip{background:#f0e8de;color:#888}
+
+.checklist-wrap{margin-top:13px}
+.checklist-items{list-style:none;margin-bottom:8px}
+.checklist-item{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid #f0e8de}
+.checklist-item:last-child{border-bottom:none}
+.cl-chk{width:20px;height:20px;border-radius:5px;border:2px solid #d4a017;background:none;cursor:pointer;flex-shrink:0;appearance:none;-webkit-appearance:none;display:flex;align-items:center;justify-content:center}
+.cl-chk:checked{background:#d4a017;border-color:#d4a017}
+.cl-chk:checked::after{content:"✓";color:#fff;font-size:.75rem;line-height:1}
+.cl-text{flex:1;font:1rem Georgia,serif;color:#1c1814;background:none;border:none;outline:none;cursor:pointer}
+.cl-text.done{text-decoration:line-through;color:#bbb}
+.cl-del{background:none;border:none;cursor:pointer;color:#ddd;font-size:.85rem;padding:2px 4px;flex-shrink:0}
+.cl-del:hover{color:#c1654a}
+.cl-add-row{display:flex;gap:8px;margin-top:6px}
+.cl-add-input{flex:1;border:1.5px solid #e8ddd0;border-radius:9px;padding:8px 11px;font:1rem Georgia,serif;outline:none;background:#faf7f2}
+.cl-add-input:focus{border-color:#d4a017}
+.cl-add-btn{padding:8px 14px;background:#d4a017;color:#fff;border:none;border-radius:9px;cursor:pointer;font:.85rem Georgia,serif;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- Reset confirm modal -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal-box">
+    <div class="modal-title">🔄 Durakları Sıfırla</div>
+    <div class="modal-sub" style="margin-bottom:14px;font-size:.8rem;color:#666;line-height:1.6">
+      Tüm günler ve duraklar varsayılan listeye dönecek.<br>
+      Notlarınız ve fotoğraflarınız <strong>korunur</strong>.
+    </div>
+    <div class="modal-btns">
+      <button class="modal-btn skip" onclick="document.getElementById('resetModal').classList.remove('on')">İptal</button>
+      <button class="modal-btn ok" style="background:#c1654a" onclick="doReset()">Evet, Sıfırla</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hotel setup modal -->
+<div class="modal-overlay" id="hotelModal">
+  <div class="modal-box">
+    <div class="modal-title">🏛 Konaklama Bilgileri</div>
+    <div class="modal-sub">İlk kurulum · İstediğinizde değiştirebilirsiniz</div>
+    <input class="modal-input" id="hotelNameInput" type="text" placeholder="Otel adı (ör: Hotel Sete Colinas)" maxlength="60">
+    <input class="modal-input" id="hotelAddrInput" type="text" placeholder="Adres veya not (ör: Booking.com Transfer)" maxlength="80">
+    <div class="modal-btns">
+      <button class="modal-btn skip" onclick="closeHotelModal()">Atla</button>
+      <button class="modal-btn ok" onclick="saveHotel()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- Start date modal -->
+<div class="modal-overlay" id="dateModal">
+  <div class="modal-box">
+    <div class="modal-title">📅 Seyahat Başlangıcı</div>
+    <div class="modal-sub">1. günün tarihi · Otomatik gün hesabı için</div>
+    <input class="modal-input" id="dateInput" type="date">
+    <div class="modal-btns">
+      <button class="modal-btn skip" onclick="closeDateModal()">Atla</button>
+      <button class="modal-btn ok" onclick="saveDateModal()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<div class="copy-toast" id="copyToast">Kopyalandı ✓</div>
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:.9rem;opacity:.7">Yükleniyor…</div>
+</div>
+
+<div id="app">
+<div class="hdr">
+  <div class="hdr-top">
+    <div>
+      <div class="htitle">Montréal &amp; <em>Toronto</em></div>
+      <div class="hsub">Seyahat Günlüğü</div>
+    </div>
+    <div class="hbadge" id="hotelBadge" onclick="editHotel()" title="Düzenlemek için tıklayın">
+      <b id="hotelName">🏛 …</b>
+      <small id="hotelAddr">✈️ …</small>
+    </div>
+  </div>
+  <div class="tabs" id="tabs"></div>
+</div>
+<div class="main">
+  <div class="prog">
+    <div class="prog-txt" id="ptext">0 / 0</div>
+    <div class="prog-track"><div class="prog-fill" id="pfill" style="width:0%"></div></div>
+    <div class="prog-pct" id="ppct">0%</div>
+  </div>
+  <div id="panels"></div>
+</div>
+<div class="bottom-bar">
+  <button class="bot-btn zip" onclick="exportZip()" style="flex:2">📦 Tümünü İndir</button>
+  <button class="bot-btn" id="resetBtn" onclick="resetDays()" style="flex:1;background:#fff0ee;color:#c1654a;border:1.5px solid #fcc">🔄 Sıfırla</button>
+</div>
+<div class="lb" id="lb" onclick="closeLb()">
+  <button class="lb-close">✕</button>
+  <img id="lbimg" src="" alt="">
+</div>
+</div><!-- /app -->
+
+<script>
+
+// ── Default itinerary ─────────────────────────
+const DEFAULT_DAYS = [
+  { title:"Seyahatten Önce", date:"Hazırlık & Kontrol Listesi", stops:[
+    {id:"pre0",ic:"📋",name:"Pasaport & Vize Kontrol",type:"Belge"},
+    {id:"pre1",ic:"🧳",name:"Bavul Hazırlama",type:"Hazırlık"},
+    {id:"pre2",ic:"💵",name:"Döviz (CAD)",type:"Finans"},
+    {id:"pre3",ic:"📱",name:"Otel & Transfer Konfirmasyonu",type:"Rezervasyon"},
+    {id:"pre4",ic:"🎟",name:"WTC 2026 Kayıt Konfirmasyonu",type:"Kongre"},
+  ]},
+  { title:"Varış & Aile Buluşması", date:"15 Mayıs Cuma", stops:[
+    {id:"d0s0",ic:"✈️",name:"Montréal Havalimanı İnişi",type:"Varış · 18:00",coord:[45.4706,-73.7408]},
+    {id:"d0s1",ic:"🏨",name:"Le Westin Montréal",type:"Check-in",coord:[45.5048,-73.5540]},
+    {id:"d0s2",ic:"👨‍👩‍👧",name:"Gülay & Alara ile Buluşma",type:"Aile"},
+    {id:"d0s3",ic:"🏛",name:"Pointe-à-Callière Müzesi",type:"Arkeoloji · Kuruluş Yeri",coord:[45.5079,-73.5548]},
+    {id:"d0s4",ic:"⛪",name:"Notre-Dame Bazilikası",type:"Gece Turu",coord:[45.5046,-73.5568]},
+    {id:"d0s5",ic:"🍽",name:"Place d'Armes'da Akşam Yemeği",type:"Gastronomi",coord:[45.5049,-73.5563]},
+  ]},
+  { title:"Kongre & Mount Royal", date:"16 Mayıs Cumartesi", stops:[
+    {id:"d1s0",ic:"🏗",name:"Palais des Congrès — WTC 2026",type:"Kongre · Kayıt & Açılış",coord:[45.5052,-73.5541]},
+    {id:"d1s1",ic:"🎓",name:"Concordia Mühendislik Fakültesi",type:"Kampüs",coord:[45.4958,-73.5780]},
+    {id:"d1s2",ic:"🎓",name:"McGill Üniversitesi Kampüsü",type:"Kampüs",coord:[45.5048,-73.5772]},
+    {id:"d1s3",ic:"⛪",name:"Saint-Joseph Oratory",type:"Kuzey Amerika'nın En Büyük Kilisesi",coord:[45.4923,-73.5874]},
+    {id:"d1s4",ic:"🌲",name:"Mount Royal Park",type:"Panoramik Manzara",coord:[45.5048,-73.5877]},
+    {id:"d1s5",ic:"☕",name:"Mount Royal Kahve Molası",type:"Mola"},
+    {id:"d1s6",ic:"👜",name:"Holt Renfrew",type:"Lüks Alışveriş",coord:[45.5030,-73.5741]},
+    {id:"d1s7",ic:"⌚",name:"Sherbrooke Street Saat Butikleri",type:"Alışveriş · Omega vb.",coord:[45.5058,-73.5727]},
+    {id:"d1s8",ic:"🥐",name:"Fransız Bistro Akşam Yemeği",type:"Gastronomi"},
+  ]},
+  { title:"Kültür, Sanat & Kalemler", date:"17 Mayıs Pazar", stops:[
+    {id:"d2s0",ic:"🎨",name:"Montréal Güzel Sanatlar Müzesi",type:"MMFA",coord:[45.4985,-73.5794]},
+    {id:"d2s1",ic:"🏘",name:"Plateau-Mont-Royal Mahallesi",type:"Muraller & Kafeler",coord:[45.5225,-73.5817]},
+    {id:"d2s2",ic:"🥩",name:"Schwartz's Deli",type:"Efsanevi Smoked Meat · 1928",coord:[45.5183,-73.5846]},
+    {id:"d2s3",ic:"🎪",name:"Quartier des Spectacles",type:"Açık Hava Etkinlikleri",coord:[45.5087,-73.5634]},
+    {id:"d2s4",ic:"✒️",name:"Nota Bene Kırtasiye Butik",type:"Lüks Kalem Koleksiyonu",coord:[45.5074,-73.5691]},
+    {id:"d2s4b",ic:"🎭",name:"Place des Arts",type:"Sanat & Kültür Merkezi",coord:[45.5081,-73.5692]},
+    {id:"d2s5",ic:"🏺",name:"Zone — Kanada Tasarımı",type:"Aksesuar & Ev",coord:[45.5070,-73.5680]},
+    {id:"d2s6",ic:"🚢",name:"Vieux-Port Yürüyüşü",type:"Eski Liman",coord:[45.5062,-73.5510]},
+    {id:"d2s7",ic:"🎡",name:"La Grande Roue",type:"Dönme Dolap · Şehir Manzarası",coord:[45.5059,-73.5496]},
+  ]},
+  { title:"Yer Altı Mühendisliği & Lojistik", date:"18 Mayıs Pazartesi", stops:[
+    {id:"d3s0",ic:"🏛",name:"WTC Teknik Sunumları",type:"Kongre · Tünel Mühendisliği",coord:[45.5052,-73.5541]},
+    {id:"d3s1",ic:"🔧",name:"Profesyonel Ağ Kurma",type:"Networking"},
+    {id:"d3s2",ic:"🚇",name:"Underground City — RÉSO Turu",type:"Yeraltı Şehri",coord:[45.5048,-73.5697]},
+    {id:"d3s3",ic:"🥂",name:"Kongre Gala / Ağ Kurma Yemeği",type:"Sosyal"},
+  ]},
+  { title:"Doğa & Bilim", date:"19 Mayıs Salı", stops:[
+    {id:"d4s0",ic:"🔬",name:"Institut de Recherches Cliniques (IRCM)",type:"Klinik Araştırma Enstitüsü",coord:[45.5178,-73.5871]},
+    {id:"d4s1",ic:"🦋",name:"Biodôme",type:"Space for Life",coord:[45.5597,-73.5519]},
+    {id:"d4s2",ic:"🌿",name:"Botanik Bahçesi",type:"Space for Life",coord:[45.5590,-73.5542]},
+    {id:"d4s3",ic:"🧺",name:"Atwater Market",type:"Yerel Şarküteri & Gurme",coord:[45.4769,-73.5779]},
+    {id:"d4s4",ic:"🍷",name:"Saint-Paul Caddesi Veda Yemeği",type:"Gastronomi",coord:[45.5067,-73.5541]},
+  ]},
+  { title:"Son Bakış & Toronto Treni", date:"20 Mayıs Çarşamba", stops:[
+    {id:"d5s0",ic:"🏛",name:"Kongre Kapanış Oturumları",type:"WTC 2026",coord:[45.5052,-73.5541]},
+    {id:"d5s1",ic:"🏘",name:"Saint-Henri Mahallesi Turu",type:"Kısa Gezi",coord:[45.4769,-73.5835]},
+    {id:"d5s2",ic:"🥯",name:"St-Viateur Simitçisi",type:"Paket Yaptır",coord:[45.5231,-73.6031]},
+    {id:"d5s3",ic:"🚂",name:"Gare Centrale → Toronto",type:"Tren · ~5 Saat",coord:[45.4997,-73.5686]},
+  ]},
+  { title:"Seyahatten Sonra", date:"Anılar & Notlar", stops:[
+    {id:"post0",ic:"⭐",name:"En Güzel An",type:"Anı"},
+    {id:"post1",ic:"🍽",name:"En İyi Yemek",type:"Gastronomi Notu"},
+    {id:"post2",ic:"📸",name:"Favori Fotoğraf Noktası",type:"Fotoğraf Notu"},
+    {id:"post3",ic:"💡",name:"Bir Dahaki Sefere",type:"İpuçları"},
+  ]},
+]
+const DB_NAME = 'seyyah_montreal';
+const DB_VER  = 1;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('meta'))  d.createObjectStore('meta');
+      if (!d.objectStoreNames.contains('media')) d.createObjectStore('media');
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(db); };
+    req.onerror   = e => reject(e.target.error);
+  });
+}
+
+function dbGet(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbPut(store, key, value) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbDel(store, key) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbGetAll(store) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+function dbGetAllKeys(store) {
+  return new Promise((resolve, reject) => {
+    const tx  = db.transaction(store, 'readonly');
+    const req = tx.objectStore(store).getAllKeys();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror   = e  => reject(e.target.error);
+  });
+}
+
+// ── App state ─────────────────────────────────
+let days = [], stopMeta = {}, activeDay = 0, editMode = [], addFormOpen = [];
+// stopMeta[id] = { checked, note, mediaKeys: [idb key, ...] }
+
+// ── Persist helpers ───────────────────────────
+async function persistMeta() {
+  await dbPut('meta', 'days', days);
+  await dbPut('meta', 'stopMeta', stopMeta);
+}
+
+// Media key format: "media__{stopId}__{index}__{filename}"
+function mediaKey(stopId, idx, name) {
+  return `media__${stopId}__${idx}__${name}`;
+}
+
+// ── Load ──────────────────────────────────────
+const DEFAULT_NOTES = {
+  'd0s0': 'Havalimanı\'ndan otele transfer. Booking.com veya önceden ayarlanan transfer ile Le Westin\'e geçiş.',
+  'd0s1': 'Palais des Congrès\'e yürüme mesafesinde, Vieux-Montréal\'in tam kalbinde. Check-in sonrası şehre hazır.',
+  'd0s2': 'Gülay ve Alara ile buluşma — üç ayrı şehirden Montréal\'de kavuşma.',
+  'd0s3': 'Montréal\'in kuruluş yeri üzerine kurulu arkeolojik müze. Yeraltı kazı alanlarını cam tabanlardan görebilirsiniz. Çok özgün.',
+  'd0s4': 'Notre-Dame Bazilikası gece aydınlatmasıyla inanılmaz görünüyor. Yemek öncesi kısa yürüyüşle görülmeli.',
+  'd0s5': 'Place d\'Armes meydanında Notre-Dame manzaralı akşam yemeği. Garde Manger veya Modavie iyi seçenekler.',
+  'd1s0': 'WTC 2026 kayıt ve açılış oturumları. Otele yürüme mesafesinde.',
+  'd1s1': 'Mühendislik perspektifinden ilginç kampüs. Şehir merkezinde, modern ve tarihi binaların karışımı.',
+  'd1s2': 'Kuzey Amerika\'nın prestijli üniversitelerinden biri. Neo-gotik mimari ve geniş kampüs. Alara için de ilgi çekici.',
+  'd1s3': 'Kuzey Amerika\'nın en büyük kilisesi. Mount Royal\'ın yamacında. Devasa kubbe içi kadar dışı da etkileyici.',
+  'd1s4': 'Şehrin en yüksek noktasından panoramik manzara. Belvedere\'den Saint Lawrence nehri ve gökdelenler görünüyor.',
+  'd1s5': 'Mount Royal\'da kafe molası. Yerel yaşamı gözlemlemek için ideal — Montréalliler burayı çok sever.',
+  'd1s6': 'Kanada\'nın en prestijli lüks mağazası. Kat kat gezilmeye değer.',
+  'd1s7': 'Sherbrooke üzerinde Omega başta olmak üzere saat ve aksesuar butikleri. Yürüyerek gezilebilir.',
+  'd1s8': 'Au Pied de Cochon veya L\'Express tavsiye edilir. Otantik Fransız bistro deneyimi.',
+  'd2s0': 'Dünya standartlarında sanat müzesi. İzlenimcilik koleksiyonu özellikle güçlü. Alara\'nın ilgisini çekebilir.',
+  'd2s1': 'Renkli viktoriyen evleri, sokak sanatı ve Boho atmosferiyle Montréal\'in en karakteristik mahallesi. Yürüyerek gezmek şart.',
+  'd2s2': '1928\'den beri aynı tarifte yapılan efsanevi smoked meat sandviç. Kuyruk olsa da beklemeye değer. Mutlaka uğrayın.',
+  'd2s3': 'Açık hava konserleri ve sanat kurulumları. Neon ışıkları ile fotoğraf açısından da zengin bir bölge.',
+  'd2s4': 'Montblanc, Caran d\'Ache ve yerel tasarım ürünler. Kalem koleksiyonu için özel bir durak.',
+  'd2s4b': 'Montréal\'in en büyük sanat kompleksi — opera, bale, senfoni ve tiyatro sahneleri bir arada. Quartier des Spectacles ve Nota Bene\'ye yürüme mesafesinde. Etkinlik takvimini önceden kontrol edin.',
+  'd2s5': 'Kanada tasarımı ev eşyaları ve aksesuarlar. Özgün hediyeler için ideal — çoğu başka yerde bulunmuyor.',
+  'd2s6': 'Saint Lawrence nehri kıyısında akşam yürüyüşü. Restore edilmiş eski depo binaları, çok güzel atmosfer.',
+  'd2s7': '60 metre yüksekliğinde dönme dolap. Şehrin neredeyse tamamı görünüyor. Gün batımında binmek tavsiye edilir.',
+  'd3s0': 'Tünel mühendisliği üzerine teknik sunumlar. RÉSO yeraltı sistemi konuşmalar için iyi referans.',
+  'd3s1': 'Kongre katılımcılarıyla birebir tanışma. Kartvizit ve proje dokümanlarını yanınızda bulundurun.',
+  'd3s2': '32 km\'lik dünyanın en büyük yeraltı yürüyüş ağı. Bir mühendis olarak aileye anlatacak çok şey var — tasarımı gerçekten etkileyici.',
+  'd3s3': 'Kongre kapsamında gala veya networking yemeği. Formal kıyafet gerektirebilir.',
+  'd4s0': 'Alara\'nın alanıyla doğrudan ilgili, dünya çapında tanınan araştırma merkezi. Dışarıdan bile etkileyici bina.',
+  'd4s1': 'Tropikal yağmur ormanı, Saint Lawrence ekosistemi, kutup bölgesi ve tropik deniz — dört ortam bir arada. Alara için harika.',
+  'd4s2': 'Dünyanın en büyük botanik bahçelerinden biri. Çin ve Japon bahçeleri özellikle etkileyici. Biodôme ile kombine bilet alın.',
+  'd4s3': 'Jean-Talon\'a kıyasla daha küçük ve yerel. Artisanal peynirler ve sıradan bulunmayan şarküteri ürünleri için ideal.',
+  'd4s4': 'Vieux-Montréal\'de son akşam yemeği. Garde Manger veya Toqué! gibi şef restoranlar bu bölgede.',
+  'd5s0': 'WTC kapanış oturumları ve son networking. Kongre notlarını ve yeni bağlantıları toparlama zamanı.',
+  'd5s1': 'Hızla dönüşen eski sanayi mahallesi. Bağımsız kafeler ve alternatif sanat galerileriyle kısa ama keyifli tur.',
+  'd5s2': '1919\'dan beri açık efsanevi simitçi. Susam ve haşhaşlı Montréal simitlerini paket yaptırıp trende yiyin.',
+  'd5s3': 'Gare Centrale\'den Via Rail ile Toronto\'ya yaklaşık 5 saat. Pencere kenarı koltuk ayırtmak şart.',
+  'post0': 'Bu seyahatin en unutulmaz anı neydi?',
+  'post1': 'Montréal\'de yediğiniz en iyi yemek hangisiydi?',
+  'post2': 'Tekrar gitseydiniz mutlaka fotoğraflayacağınız yer?',
+  'post3': 'Bir dahaki Montréal ziyareti için notlar.',
+};
+
+async function loadState() {
+  const savedDays = await dbGet('meta', 'days');
+  const savedMeta = await dbGet('meta', 'stopMeta');
+
+  if (savedDays && savedMeta) {
+    days     = savedDays;
+    stopMeta = savedMeta;
+    // Apply DEFAULT_NOTES: set note if empty OR if it matches another stop's default (wrong assignment)
+    const allDefaultNotes = new Set(Object.values(DEFAULT_NOTES));
+    days.forEach(d => d.stops.forEach(s => {
+      if (!stopMeta[s.id]) stopMeta[s.id] = {checked:false, note:'', mediaKeys:[], checklist:[]};
+      const current = stopMeta[s.id].note || '';
+      const correct = DEFAULT_NOTES[s.id] || '';
+      // Update if: empty, or current note is a default note but not the correct one for this stop
+      if (!current || (allDefaultNotes.has(current) && current !== correct)) {
+        stopMeta[s.id].note = correct;
+      }
+    }));
+    await persistMeta();
+  } else {
+    days = JSON.parse(JSON.stringify(DEFAULT_DAYS));
+    stopMeta = {};
+    days.forEach(d => d.stops.forEach(s => {
+      stopMeta[s.id] = { checked: false, note: DEFAULT_NOTES[s.id] || '', mediaKeys: [], checklist: [] };
+    }));
+    await persistMeta();
+  }
+}
+
+// ── Render ────────────────────────────────────
+function render() {
+  mediaLoaded.clear();
+  editMode   = days.map((_,i) => editMode[i]   || false);
+  addFormOpen= days.map((_,i) => addFormOpen[i] || false);
+
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  days.forEach((d,i) => {
+    const b = document.createElement('button');
+    b.className = 'tab' + (i===activeDay?' on':'');
+    b.textContent = i===0 ? '⬆ Önce' : i===days.length-1 ? '⬇ Sonra' : 'Gün '+i;
+    b.onclick = () => { activeDay=i; render(); };
+    tabsEl.appendChild(b);
+  });
+
+  const panelsEl = document.getElementById('panels');
+  panelsEl.innerHTML = '';
+  days.forEach((d,di) => {
+    const panel = document.createElement('div');
+    panel.className = 'panel' + (di===activeDay?' on':'');
+
+    const dhdr = document.createElement('div');
+    dhdr.className = 'day-hdr';
+    dhdr.innerHTML = `
+      <div class="day-hdr-left">
+        <div class="day-n">${di===0?'↑':di===days.length-1?'↓':'0'+di}</div>
+        <div><div class="day-title">${d.title}</div><div class="day-date">${d.date}</div></div>
+      </div>
+      <button class="edit-btn${editMode[di]?' on':''}" onclick="toggleEdit(${di})">${editMode[di]?'✓ Bitti':'✏ Düzenle'}</button>`;
+    panel.appendChild(dhdr);
+
+    // Day title/date edit form — shown when in edit mode
+    if (editMode[di]) {
+      const deform = document.createElement('div');
+      deform.className = 'day-edit-form';
+      deform.innerHTML = `
+        <div style="font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:#b8860b;margin-bottom:2px">Günün Başlığı & Tarihi</div>
+        <input class="day-edit-input" id="dtitle${di}" value="${d.title}" placeholder="Başlık (ör: Alfama & Castelo)">
+        <input class="day-edit-input" id="ddate${di}" value="${d.date}" placeholder="Tarih/açıklama (ör: Perşembe · Varış 13:15)">
+        <div class="day-edit-btns">
+          <button class="day-edit-btn cancel" onclick="toggleEdit(${di})">İptal</button>
+          <button class="day-edit-btn ok" onclick="saveDayMeta(${di})">Kaydet</button>
+        </div>`;
+      panel.appendChild(deform);
+    }
+
+    const stopsEl = document.createElement('div');
+    stopsEl.id = 'stops'+di;
+    if (editMode[di]) stopsEl.classList.add('edit-mode');
+    d.stops.forEach((s,si) => stopsEl.appendChild(makeCard(s,di,si)));
+    panel.appendChild(stopsEl);
+
+    const addBox = document.createElement('div');
+    addBox.className = 'add-stop-box';
+    addBox.innerHTML = `
+      <button class="add-stop-btn" onclick="toggleAddForm(${di})">＋ Yeni Durak Ekle</button>
+      <div class="add-form${addFormOpen[di]?' on':''}" id="addform${di}">
+        <div class="add-row">
+          <input class="emoji-input" id="emoji${di}" type="text" placeholder="🗺" maxlength="2">
+          <input class="name-input" id="aname${di}" type="text" placeholder="Durak adı">
+        </div>
+        <input class="type-input" id="atype${di}" type="text" placeholder="Tür (ör: Müze, Kafe…)">
+        <div class="add-form-btns">
+          <button class="abtn cancel" onclick="toggleAddForm(${di})">İptal</button>
+          <button class="abtn ok" onclick="addStop(${di})">Ekle</button>
+        </div>
+      </div>`;
+    panel.appendChild(addBox);
+    panelsEl.appendChild(panel);
+  });
+
+  updateProgress();
+
+  // Refresh appearance for all stops in active day
+  days[activeDay].stops.forEach(s => {
+    refreshCardAppearance(s.id);
+    const card = document.getElementById('card'+s.id);
+    if (card && card.classList.contains('open')) { loadMediaForStop(s.id); renderChecklist(s.id); }
+  });
+}
+
+function makeCard(s, di, si) {
+  const sm = stopMeta[s.id] || { checked:false, note:'', mediaKeys:[] };
+  const card = document.createElement('div');
+  card.className = 'card' + (sm.checked?' done':'');
+  card.id = 'card'+s.id;
+
+  const dayOpts = days.map((d,i) =>
+    `<option value="${i}"${i===di?' selected':''}>${i===0?'Önce':i===days.length-1?'Sonra':'Gün '+i} — ${d.title}</option>`
+  ).join('');
+
+  card.innerHTML = `
+    <div class="card-head" onclick="handleHeadClick('${s.id}',${di})">
+      <div class="cicon">${s.ic}</div>
+      <div><div class="cname">${s.name}</div><div class="ctype">${s.type}</div></div>
+      <div class="cactions">
+        <button class="chk${sm.checked?' on':''}" id="chk${s.id}" onclick="event.stopPropagation();toggleCheck('${s.id}')">✓</button>
+        <span class="arr">▾</span>
+        <div class="edit-controls">
+          <button class="ord-btn" ${si===0?'disabled':''} onclick="moveStop(${di},${si},-1)">↑</button>
+          <button class="ord-btn" ${si===days[di].stops.length-1?'disabled':''} onclick="moveStop(${di},${si},1)">↓</button>
+          <select class="move-sel" onchange="moveToDay(${di},${si},this.value)">${dayOpts}</select>
+          <button class="del-card-btn" onclick="deleteStop(${di},${si})">🗑</button>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <label class="flabel">Notlar</label>
+      <textarea id="note${s.id}" placeholder="İzlenimlerinizi yazın…" oninput="saveNote('${s.id}')">${sm.note||''}</textarea>
+      <label class="flabel">Kontrol Listesi</label>
+      <div class="checklist-wrap">
+        <ul class="checklist-items" id="cl${s.id}"></ul>
+        <div class="cl-add-row">
+          <input class="cl-add-input" id="clInput${s.id}" type="text" placeholder="Yeni madde ekle…" onkeydown="if(event.key==='Enter')addClItem('${s.id}')">
+          <button class="cl-add-btn" onclick="addClItem('${s.id}')">+ Ekle</button>
+        </div>
+      </div>
+      <label class="flabel">Fotoğraf / Video / Ses</label>
+      <div class="upload-grid">
+        <label class="upload-lbl dark"><span class="ic">🖼</span><span>Fotoğraf / Video Ekle</span><input type="file" accept="image/*,video/*" multiple onchange="handleFiles('${s.id}',this)"></label>
+        <label class="upload-lbl"><span class="ic">🎙</span><span>Ses Kaydet</span><input type="file" accept="audio/*" capture="microphone" onchange="handleFiles('${s.id}',this)"></label>
+      </div>
+      <div class="mgrid" id="media${s.id}"></div>
+      <div id="audio${s.id}"></div>
+    </div>`;
+  return card;
+}
+
+// Track which stops have already had media loaded into DOM
+const mediaLoaded = new Set();
+
+// Load and render media blobs from IDB for a stop — runs only once per stop per session
+async function loadMediaForStop(stopId) {
+  if (mediaLoaded.has(stopId)) return;
+  mediaLoaded.add(stopId);
+
+  const sm = stopMeta[stopId];
+  if (!sm || !sm.mediaKeys || !sm.mediaKeys.length) return;
+  const card = document.getElementById('card'+stopId);
+  if (!card) return;
+
+  for (let i = 0; i < sm.mediaKeys.length; i++) {
+    const key = sm.mediaKeys[i];
+    const blob = await dbGet('media', key);
+    if (!blob) continue;
+    const url = URL.createObjectURL(blob);
+    renderMediaURL(stopId, blob.type, url, key, card);
+  }
+  refreshCardAppearance(stopId);
+}
+
+function renderMediaURL(stopId, mimeType, url, key, card) {
+  if (!card) card = document.getElementById('card'+stopId);
+  if (!card) return;
+  const safeKey = key.replace(/[^a-zA-Z0-9_]/g,'_');
+
+  if (mimeType.startsWith('audio/')) {
+    const el = card.querySelector('#audio'+stopId); if (!el) return;
+    const row = document.createElement('div');
+    row.className = 'arow';
+    row.id = 'arow_'+safeKey;
+    row.innerHTML = `🎙 <audio src="${url}" controls></audio>
+      <button class="adel" onclick="delMedia('${stopId}','${key}')">✕</button>`;
+    el.appendChild(row);
+  } else {
+    const grid = card.querySelector('#media'+stopId); if (!grid) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'mthumb';
+    wrap.id = 'mthumb_'+safeKey;
+    if (mimeType.startsWith('image/')) {
+      wrap.innerHTML = `<img src="${url}" onclick="openLb('${url}')">
+        <button class="mdel" onclick="delMedia('${stopId}','${key}')">✕</button>`;
+    } else {
+      wrap.innerHTML = `<video src="${url}" controls playsinline></video>
+        <button class="mdel" onclick="delMedia('${stopId}','${key}')">✕</button>`;
+    }
+    grid.appendChild(wrap);
+  }
+}
+
+// ── File handling ─────────────────────────────
+async function handleFiles(stopId, input) {
+  if (!stopMeta[stopId]) stopMeta[stopId] = { checked:false, note:'', mediaKeys:[] };
+  const files = Array.from(input.files);
+  input.value = '';
+
+  for (const file of files) {
+    const idx = stopMeta[stopId].mediaKeys.length;
+    const key = mediaKey(stopId, idx, file.name);
+    await dbPut('media', key, file); // store raw Blob — no size limit!
+    stopMeta[stopId].mediaKeys.push(key);
+    await persistMeta();
+
+    // Render immediately
+    const url = URL.createObjectURL(file);
+    const card = document.getElementById('card'+stopId);
+    renderMediaURL(stopId, file.type, url, key, card);
+  }
+  refreshCardAppearance(stopId);
+}
+
+async function delMedia(stopId, key) {
+  if (!confirm('Bu dosyayı silmek istediğinize emin misiniz?')) return;
+  await dbDel('media', key);
+  if (stopMeta[stopId]) {
+    stopMeta[stopId].mediaKeys = stopMeta[stopId].mediaKeys.filter(k => k !== key);
+    await persistMeta();
+  }
+  // Remove from DOM
+  const safeKey = key.replace(/[^a-zA-Z0-9_]/g,'_');
+  const el = document.getElementById('mthumb_'+safeKey) || document.getElementById('arow_'+safeKey);
+  if (el) el.remove();
+  refreshCardAppearance(stopId);
+}
+
+// ── Interactions ──────────────────────────────
+function handleHeadClick(id, di) {
+  if (editMode[di]) return;
+  const card = document.getElementById('card'+id);
+  const wasOpen = card.classList.contains('open');
+  card.classList.toggle('open');
+  if (!wasOpen) {
+    loadMediaForStop(id);
+    renderChecklist(id);
+  }
+}
+
+async function toggleCheck(id) {
+  if (!stopMeta[id]) stopMeta[id] = { checked:false, note:'', mediaKeys:[] };
+  stopMeta[id].checked = !stopMeta[id].checked;
+  const card = document.getElementById('card'+id);
+  const chk  = document.getElementById('chk'+id);
+  card.classList.toggle('done', stopMeta[id].checked);
+  chk.classList.toggle('on', stopMeta[id].checked);
+  chk.style.color = stopMeta[id].checked ? '#fff' : 'transparent';
+  updateProgress();
+  await persistMeta();
+}
+
+async function saveNote(id) {
+  if (!stopMeta[id]) stopMeta[id] = { checked:false, note:'', mediaKeys:[] };
+  stopMeta[id].note = document.getElementById('note'+id).value;
+  await persistMeta();
+  refreshCardAppearance(id);
+}
+
+function toggleEdit(di)      { editMode[di]=!editMode[di]; render(); }
+function toggleAddForm(di)   { addFormOpen[di]=!addFormOpen[di]; render(); if(addFormOpen[di]) setTimeout(()=>{ const el=document.getElementById('aname'+di); if(el)el.focus(); },100); }
+
+async function addStop(di) {
+  const ic   = document.getElementById('emoji'+di).value.trim() || '📍';
+  const name = document.getElementById('aname'+di).value.trim();
+  const type = document.getElementById('atype'+di).value.trim() || 'Durak';
+  if (!name) { alert('Lütfen bir durak adı girin.'); return; }
+  const id = 'c'+Date.now();
+  days[di].stops.push({id,ic,name,type});
+  stopMeta[id] = { checked:false, note:'', mediaKeys:[] };
+  addFormOpen[di] = false;
+  await persistMeta();
+  render();
+}
+
+async function moveStop(di, si, dir) {
+  const stops = days[di].stops, nsi = si+dir;
+  if (nsi<0||nsi>=stops.length) return;
+  [stops[si],stops[nsi]] = [stops[nsi],stops[si]];
+  await persistMeta(); render();
+}
+
+async function moveToDay(fromDi, si, toDiStr) {
+  const toDi = parseInt(toDiStr);
+  if (toDi===fromDi) return;
+  const stop = days[fromDi].stops.splice(si,1)[0];
+  days[toDi].stops.push(stop);
+  await persistMeta(); render();
+}
+
+async function deleteStop(di, si) {
+  const stop = days[di].stops[si];
+  if (!confirm(stop.name + ' durağını silmek istiyor musunuz?')) return;
+  // Delete all media for this stop
+  const sm = stopMeta[stop.id];
+  if (sm && sm.mediaKeys) {
+    for (const k of sm.mediaKeys) await dbDel('media', k);
+  }
+  days[di].stops.splice(si,1);
+  delete stopMeta[stop.id];
+  await persistMeta(); render();
+}
+
+// ── Progress ──────────────────────────────────
+function updateProgress() {
+  const ids  = Object.keys(stopMeta);
+  const done = ids.filter(id => stopMeta[id]?.checked).length;
+  const pct  = ids.length ? Math.round(done/ids.length*100) : 0;
+  document.getElementById('ptext').textContent = done+' / '+ids.length;
+  document.getElementById('pfill').style.width = pct+'%';
+  document.getElementById('ppct').textContent  = pct+'%';
+}
+
+// ── Save day title/date ───────────────────────
+async function saveDayMeta(di) {
+  const title = document.getElementById('dtitle'+di)?.value.trim();
+  const date  = document.getElementById('ddate'+di)?.value.trim();
+  if (title) days[di].title = title;
+  if (date)  days[di].date  = date;
+  editMode[di] = false;
+  await persistMeta();
+  render();
+}
+
+
+
+// ── Reset days to DEFAULT_DAYS ────────────────
+function resetDays() {
+  document.getElementById('resetModal').classList.add('on');
+}
+
+async function doReset() {
+  document.getElementById('resetModal').classList.remove('on');
+  try {
+    days = JSON.parse(JSON.stringify(DEFAULT_DAYS));
+    const newMeta = {};
+    days.forEach(d => d.stops.forEach(s => {
+      newMeta[s.id] = stopMeta[s.id] || {checked:false, note:'', mediaKeys:[], checklist:[]};
+    }));
+    stopMeta = newMeta;
+    await dbPut('meta', 'days', days);
+    await dbPut('meta', 'stopMeta', stopMeta);
+    activeDay = 0;
+    editMode = [];
+    addFormOpen = [];
+    render();
+  } catch(e) {
+    console.error('Reset error:', e);
+  }
+}
+
+// ── Checklist ─────────────────────────────────
+function renderChecklist(stopId) {
+  const ul = document.getElementById('cl'+stopId);
+  if (!ul) return;
+  const sm = stopMeta[stopId];
+  if (!sm) return;
+  const items = sm.checklist || [];
+  ul.innerHTML = '';
+  items.forEach((item, i) => {
+    const li = document.createElement('li');
+    li.className = 'checklist-item';
+    li.innerHTML = `
+      <input class="cl-chk" type="checkbox" ${item.done?'checked':''} onchange="toggleClItem('${stopId}',${i})">
+      <span class="cl-text${item.done?' done':''}">${item.text}</span>
+      <button class="cl-del" onclick="delClItem('${stopId}',${i})" title="Sil">✕</button>`;
+    ul.appendChild(li);
+  });
+}
+
+async function addClItem(stopId) {
+  const input = document.getElementById('clInput'+stopId);
+  const text = input?.value.trim();
+  if (!text) return;
+  if (!stopMeta[stopId]) stopMeta[stopId] = {checked:false,note:'',mediaKeys:[],checklist:[]};
+  if (!stopMeta[stopId].checklist) stopMeta[stopId].checklist = [];
+  stopMeta[stopId].checklist.push({text, done:false});
+  input.value = '';
+  await persistMeta();
+  renderChecklist(stopId);
+  refreshCardAppearance(stopId);
+}
+
+async function toggleClItem(stopId, idx) {
+  const cl = stopMeta[stopId]?.checklist;
+  if (!cl || !cl[idx]) return;
+  cl[idx].done = !cl[idx].done;
+  await persistMeta();
+  renderChecklist(stopId);
+}
+
+async function delClItem(stopId, idx) {
+  if (!confirm('Bu maddeyi silmek istediğinize emin misiniz?')) return;
+  stopMeta[stopId]?.checklist?.splice(idx, 1);
+  await persistMeta();
+  renderChecklist(stopId);
+  refreshCardAppearance(stopId);
+}
+
+// ── Refresh card appearance ───────────────────
+function refreshCardAppearance(stopId) {
+  const card = document.getElementById('card'+stopId);
+  if (!card) return;
+  const sm = stopMeta[stopId] || {};
+  const hasNote  = !!(sm.note && sm.note.trim());
+  const hasMedia = !!(sm.mediaKeys && sm.mediaKeys.length);
+  const hasCl    = !!(sm.checklist && sm.checklist.length);
+  const hasData  = hasNote || hasMedia || hasCl;
+  card.classList.toggle('hasdata', hasData);
+  let indEl = card.querySelector('.cindicators');
+  if (hasData) {
+    if (!indEl) {
+      indEl = document.createElement('div');
+      indEl.className = 'cindicators';
+      const ctypeEl = card.querySelector('.ctype');
+      if (ctypeEl) ctypeEl.after(indEl);
+    }
+    indEl.innerHTML =
+      (hasNote  ? '<span class="cind">✏ not</span>' : '') +
+      (hasMedia ? '<span class="cind">📎 '+sm.mediaKeys.length+' dosya</span>' : '');
+  } else if (indEl) {
+    indEl.remove();
+  }
+}
+
+// ── Save (auto, explicit button) ──────────────
+
+
+// ── ZIP export ────────────────────────────────
+async function exportZip() {
+  const btn = document.getElementById('zipBtn');
+  btn.textContent='⏳ Hazırlanıyor…'; btn.classList.add('busy');
+  try {
+    const zip = new JSZip();
+    let master = '# Lizbon & Sintra — Seyahat Günlüğü\nHotel Sete Colinas | Booking.com Transfer\n'+'='.repeat(50)+'\n\n';
+
+    for (let di=0; di<days.length; di++) {
+      const d = days[di];
+      const dayLabel = di===0?'Seyahatten_Once':di===days.length-1?'Seyahatten_Sonra':'Gun_'+di;
+      const folder   = zip.folder(dayLabel+'_'+d.title.replace(/[^\w\s]/gi,'').replace(/\s+/g,'_'));
+      master += `\n## ${di===0?'Seyahatten Önce':di===days.length-1?'Seyahatten Sonra':'Gün '+di} — ${d.title}\n`;
+
+      for (let si=0; si<d.stops.length; si++) {
+        const s  = d.stops[si];
+        const sm = stopMeta[s.id]||{};
+        const note = sm.note||'';
+        const keys = sm.mediaKeys||[];
+
+        master += `\n### ${sm.checked?'✓':'○'} ${s.ic} ${s.name} [${s.type}]\n`;
+        if (note) master += note+'\n';
+        if (keys.length) master += `(${keys.length} medya dosyası)\n`;
+
+        const safeName = `${(si+1).toString().padStart(2,'0')}_${s.name.replace(/[^\w\s]/gi,'').replace(/\s+/g,'_')}`;
+        if (note||keys.length) {
+          let txt = `${s.ic} ${s.name}\n${s.type}\n${'—'.repeat(30)}\n\n`;
+          if (note) txt += note+'\n\n';
+          folder.file(safeName+'.txt', txt);
+        }
+
+        for (let mi=0; mi<keys.length; mi++) {
+          const blob = await dbGet('media', keys[mi]);
+          if (!blob) continue;
+          const parts = keys[mi].split('__');
+          const origName = parts[parts.length-1] || ('dosya_'+mi);
+          const ab = await blob.arrayBuffer();
+          folder.file(`${safeName}_${(mi+1).toString().padStart(2,'0')}_${origName}`, ab);
+        }
+      }
+    }
+
+    zip.file('00_Tum_Notlar.txt', master);
+    const blob = await zip.generateAsync({type:'blob', compression:'DEFLATE', compressionOptions:{level:6}});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href=url; a.download='Lizbon_Sintra_Gunlugu.zip';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    btn.textContent='✓ İndirildi';
+    setTimeout(()=>{ btn.textContent='📦 Tümünü İndir'; btn.classList.remove('busy'); },2500);
+  } catch(e) {
+    alert('Hata: '+e.message);
+    btn.textContent='📦 Tümünü İndir'; btn.classList.remove('busy');
+  }
+}
+
+// ── Lightbox ──────────────────────────────────
+function openLb(src){ document.getElementById('lbimg').src=src; document.getElementById('lb').classList.add('on'); }
+function closeLb(){ document.getElementById('lb').classList.remove('on'); document.getElementById('lbimg').src=''; }
+
+
+
+// ── Hotel info ────────────────────────────────
+function updateHotelBadge(name, addr) {
+  document.getElementById('hotelName').textContent = '🏛 ' + (name || 'Otel');
+  document.getElementById('hotelAddr').textContent = addr || '';
+}
+
+async function loadHotel() {
+  const name = await dbGet('meta', 'hotelName');
+  const addr = await dbGet('meta', 'hotelAddr');
+  if (name || addr) {
+    updateHotelBadge(name, addr);
+    return true; // already set
+  }
+  return false; // not set yet
+}
+
+function editHotel() {
+  dbGet('meta','hotelName').then(n => {
+    document.getElementById('hotelNameInput').value = n || '';
+  });
+  dbGet('meta','hotelAddr').then(a => {
+    document.getElementById('hotelAddrInput').value = a || '';
+  });
+  document.getElementById('hotelModal').classList.add('on');
+  setTimeout(() => document.getElementById('hotelNameInput').focus(), 100);
+}
+
+async function saveHotel() {
+  const name = document.getElementById('hotelNameInput').value.trim();
+  const addr = document.getElementById('hotelAddrInput').value.trim();
+  await dbPut('meta', 'hotelName', name || 'Otel');
+  await dbPut('meta', 'hotelAddr', addr || '');
+  updateHotelBadge(name, addr);
+  closeHotelModal();
+}
+
+function closeHotelModal() {
+  document.getElementById('hotelModal').classList.remove('on');
+}
+
+// ── Long press to copy name ───────────────────
+let longPressTimer = null;
+function startLongPress(e, id, name) {
+  longPressTimer = setTimeout(() => { copyName(null, name); }, 600);
+}
+function cancelLongPress() { clearTimeout(longPressTimer); }
+function copyName(e, name) {
+  if (e) e.preventDefault();
+  navigator.clipboard.writeText(name).then(() => showToast()).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = name; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta); showToast();
+  });
+}
+function showToast() {
+  const t = document.getElementById('copyToast');
+  t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 1800);
+}
+
+// ── Auto active day based on start date ──────
+function applyStartDate(isoStr) {
+  const startDate = new Date(isoStr);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  startDate.setHours(0,0,0,0);
+  const diff = Math.round((today - startDate) / 86400000);
+  const travelDays = days.length - 2; // exclude Önce and Sonra
+  if (diff < 0) {
+    activeDay = 0;
+  } else if (diff < travelDays) {
+    activeDay = diff + 1;
+  } else {
+    activeDay = days.length - 1;
+  }
+}
+
+async function checkActiveDay() {
+  const startDate = await dbGet('meta', 'startDate');
+  if (startDate) {
+    applyStartDate(startDate);
+  }
+  // If not set, modal will be shown after render — handled in init
+}
+
+function openDateModal() {
+  // Pre-fill with today as default
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const dd = String(today.getDate()).padStart(2,'0');
+  document.getElementById('dateInput').value = `${yyyy}-${mm}-${dd}`;
+  document.getElementById('dateModal').classList.add('on');
+  setTimeout(() => document.getElementById('dateInput').focus(), 100);
+}
+
+function closeDateModal() {
+  document.getElementById('dateModal').classList.remove('on');
+}
+
+async function saveDateModal() {
+  const val = document.getElementById('dateInput').value;
+  if (!val) { closeDateModal(); return; }
+  const iso = new Date(val).toISOString();
+  await dbPut('meta', 'startDate', iso);
+  applyStartDate(iso);
+  closeDateModal();
+  render();
+  // Now ask for hotel if not set
+  const hotelName = await dbGet('meta', 'hotelName');
+  if (!hotelName) setTimeout(() => { document.getElementById('hotelModal').classList.add('on'); document.getElementById('hotelNameInput').focus(); }, 300);
+}
+
+// ── Init ──────────────────────────────────────
+(async () => {
+  await openDB();
+  await loadState();
+  await checkActiveDay();
+  const hotelSet = await loadHotel();
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  render();
+  const startDate = await dbGet('meta', 'startDate');
+  if (!startDate) {
+    // Show date modal first, hotel modal follows after date save
+    setTimeout(() => openDateModal(), 400);
+  } else if (!hotelSet) {
+    // Date set but no hotel yet
+    setTimeout(() => document.getElementById('hotelModal').classList.add('on'), 400);
+    setTimeout(() => document.getElementById('hotelNameInput').focus(), 550);
+  }
+})();
+
+</script>
+</body>
+</html>
